@@ -22,11 +22,13 @@ getImagesButton.addEventListener('click', function() {
   // If no date is selected, show a message and stop
   if (!selectedDate) {
     const galleryDiv = document.getElementById('gallery');
-    if (galleryDiv) {
-      galleryDiv.innerHTML = `<p>Please select a date first.</p>`;
-    }
+    galleryDiv.innerHTML = `<p>Please select a date first.</p>`;
     return;
   }
+
+  // Show a loading message before fetching data
+  const galleryDiv = document.getElementById('gallery');
+  galleryDiv.innerHTML = `<div class="placeholder"><div class="placeholder-icon">🔄</div><p>Loading space photos…</p></div>`;
 
   // Build the API URL with the selected date
   const apiUrl = `https://api.nasa.gov/planetary/apod?api_key=${apiKey}&date=${selectedDate}`;
@@ -37,32 +39,33 @@ getImagesButton.addEventListener('click', function() {
       return response.json();
     })
     .then(function(data) {
-      console.log('NASA APOD data:', data);
-
-      const galleryDiv = document.getElementById('gallery');
-      if (galleryDiv) {
-        // Check if the media is an image
-        if (data.media_type === 'image') {
-          galleryDiv.innerHTML = `
+      // Once data is loaded, replace loading message with gallery content
+      if (data.media_type === 'image') {
+        galleryDiv.innerHTML = `
+          <div class="gallery-item" style="cursor:pointer;">
             <h2>${data.title}</h2>
             <img src="${data.url}" alt="${data.title}" style="max-width:100%;">
             <p>${data.explanation}</p>
-          `;
-        } else {
-          // If it's not an image (e.g., a video), show a message
-          galleryDiv.innerHTML = `
-            <h2>${data.title}</h2>
-            <p>This date's media is not an image. Try another date!</p>
-          `;
+          </div>
+        `;
+        // Add click event to open modal
+        const galleryItem = galleryDiv.querySelector('.gallery-item');
+        if (galleryItem) {
+          galleryItem.onclick = function() {
+            showModal(data.url, data.title, data.date, data.explanation);
+          };
         }
+      } else {
+        galleryDiv.innerHTML = `
+          <h2>${data.title}</h2>
+          <p>This date's media is not an image. Try another date!</p>
+        `;
       }
     })
     .catch(function(error) {
+      // If there's an error, show a message
       console.error('Error fetching NASA data:', error);
-      const galleryDiv = document.getElementById('gallery');
-      if (galleryDiv) {
-        galleryDiv.innerHTML = `<p>Sorry, something went wrong loading the NASA image.</p>`;
-      }
+      galleryDiv.innerHTML = `<p>Sorry, something went wrong loading the NASA image.</p>`;
     });
 });
 
@@ -100,3 +103,51 @@ fetch(apiUrl)
       galleryDiv.innerHTML = `<p>Sorry, something went wrong loading the NASA image.</p>`;
     }
   });
+
+// Helper function to show the modal with image details
+function showModal(imageUrl, title, date, explanation) {
+  // Get modal elements
+  const modal = document.getElementById('modal');
+  const modalImage = document.getElementById('modalImage');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalDate = document.getElementById('modalDate');
+  const modalExplanation = document.getElementById('modalExplanation');
+
+  // Set modal content
+  modalImage.src = imageUrl;
+  modalImage.alt = title;
+  modalTitle.textContent = title;
+  modalDate.textContent = date ? `Date: ${date}` : '';
+  modalExplanation.textContent = explanation;
+
+  // Show the modal
+  modal.style.display = 'flex';
+}
+
+// Helper function to hide the modal
+function hideModal() {
+  const modal = document.getElementById('modal');
+  modal.style.display = 'none';
+}
+
+// Wait until the page is fully loaded before adding modal event listeners
+document.addEventListener('DOMContentLoaded', function() {
+  // Get the close button and modal elements
+  const closeModalBtn = document.getElementById('closeModal');
+  const modal = document.getElementById('modal');
+
+  // When the close button is clicked, hide the modal
+  if (closeModalBtn) {
+    closeModalBtn.onclick = hideModal;
+  }
+
+  // When you click outside the modal content, hide the modal
+  if (modal) {
+    modal.onclick = function(event) {
+      // Only close if the background (not the content) is clicked
+      if (event.target === modal) {
+        hideModal();
+      }
+    };
+  }
+});
